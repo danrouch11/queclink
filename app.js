@@ -5,12 +5,10 @@ colors = require('colors'),
 app = express();
 const { Console } = require('console');
 const queclink = require('queclink-parser');
-
 var dbconfig = require('./src/databaseConfig.js');
-// nos conectamos a la base de datos
 var db= dbconfig.connection;
-let equipos=[];
 var dataObject = [];
+
 console.log('Iniciando Servicio Queclink Node Server'.yellow);
 
 serveron();
@@ -90,7 +88,6 @@ async function serveron(){
 }
 
 function guardardatosendb(dataObject){
-    //console.log(dataObject['Device_ID']);
     let sql_search = `SELECT count(*) as contador FROM equipos where movil_id = '${dataObject['Device_ID']}'`;
     let query = db.query(sql_search, (err, result) => {
       if (err) { console.error(err); }
@@ -130,6 +127,6 @@ app.listen(app.get('port'), () => {
   // console.log(`Servidor en puerto ${app.get('port')}`);
 });
 
-app.get('/dhl_server', function (req, res) {
+app.get('/queclink_server', function (req, res) {
   res.sendFile('index.html', { root: './src/public/' });
 });
