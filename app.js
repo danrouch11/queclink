@@ -2,120 +2,215 @@ const server = require('net').createServer(),
 express = require('express'),
 path = require('path'),
 colors = require('colors'),
+{v4: uuidv4} = require('uuid'),
 app = express();
 const { Console } = require('console');
 const queclink = require('queclink-parser');
 var dbconfig = require('./src/databaseConfig.js');
-var db= dbconfig.connection;
-var dataObject = [];
-
+var db = dbconfig.connection;
+// variables globales
+let devices = [];
+let clients = [];
+sockets = {};
+socketids=[];
+//Solicitamos el cron para buscar comandos y envíarlos
+require('./src/buscarenviarcomandos.js');
+// procedemos aa activar el servico
 console.log('Iniciando Servicio Queclink Node Server'.yellow);
 
 serveron();
 
 async function serveron(){
   console.log('Listo para recibir data'.green);
-  server.on('connection', async (conn) => {
-      const addr = conn.remoteAddress + ':' + conn.remotePort;
-      console.log('Nueva conexion de %s', addr);
-      conn.on('data', async(data) => {
-        const raw = new Buffer.from(data);
+  // nueva conexión de equipo
+  server.on('connection', async (socket) => {
+    // creamos el nuevo socket
+    console.log('Nueva conexión');
+    socket.id = uuidv4();
+    sockets[socket.id] = socket;
+    socketids.push(socket.id);
+    // nueva recepción de datos
+    socket.on('data', async(data) => {
+      const raw = new Buffer.from(data);
+      try {
         const datas = queclink.parse(raw);
-        //console.log(datas);
-        const fechaHora = new Date(datas.datetime);
-        const fechaFormateada = fechaHora.toISOString().split('T')[0];
-        const horaFormateada = fechaHora.toISOString().split('T')[1].split('.')[0];
-        let LAT = 0.0000000;
-        let LON = 0.0000000;
-        if (datas.loc) {
-          LAT = datas.loc.coordinates[1];
-          LON = datas.loc.coordinates[0]
+        if (datas.command) {
+          console.log('comando recibido');
+          console.log(datas);
+        }else {
+          if (datas.alarm.type === 'Gps') {
+            if (datas.datetime && datas.loc.coordinates) {
+              const dataObjects = await generatedataobjects('ALT',datas,socket.id);
+              guardardatosendb(dataObjects);
+            }else {
+              console.log('imposible guardar registro sin datos gps.');
+            }
+          }else if (datas.alarm.type === 'Heartbeat') {
+            console.log('Heartbeat recibido...');
+            console.log("Estatus: "+datas.alarm.message);
+            console.log('Envíando respuesta de heartbeat');
+            socket.write('+SACK:GTHBD,,'+datas.serialId+'$');
+            socket.write('+AT:GTRTO');
+            // {
+            //    raw: '+ACK:GTHBD,270D04,863457050347911,,20231206192459,7930$',
+            //    manufacturer: 'queclink',
+            //    device: 'Queclink-GV300W',
+            //    type: 'data',
+            //    imei: '863457050347911',
+            //    protocolVersion: { raw: '270D04', deviceType: 'GV300W', version: '13.4' },
+            //    temperature: null,
+            //    history: false,
+            //    sentTime: 2023-12-06T19:24:59.000Z,
+            //    serialId: 31024,
+            //    alarm: { type: 'Heartbeat', message: 'Conexión viva' }
+            //  }
+          }else {
+            if (datas.datetime && datas.loc.coordinates) {
+              const dataObjects = await generatedataobjects('ALT',datas,socket.id);
+              guardardatosendb(dataObjects);
+            }else {
+              console.log('imposible guardar registro sin datos gps.');
+            }
+          }
         }
-        let BCK_VOLT = ''
-        let PWR_VOLT = '';
-        if (datas.voltage) {
-          BCK_VOLT = datas.battery;
-          PWR_VOLT = datas.inputCharge;
-        }
-        if (datas.alarm.type === 'Gps') {
-          dataObject = {
-            date_connected: datas.datetime || null,
-            //fecha: fechaFormateada || null,
-            date: fechaFormateada || null,
-            time: horaFormateada || null,
-            Device_ID: datas.imei || null,
-            Command_Type: 'STT',
-            LAT: LAT || null,
-            LON: LON || null,
-            altitude: datas.altitude ? datas.altitude.toString().slice(0, 4) : null,
-            SPD: datas.speed || null,
-            CRS: datas.hdop || null,
-            BCK_VOLT: BCK_VOLT || null,
-            PWR_VOLT: PWR_VOLT || null,
-            sendtime: datas.sentTime || null,
-            H_METTER: datas.hourmeter || null
-          };
-          guardardatosendb(dataObject);
-        } else {
-          dataObject = {
-            date_connected: datas.datetime || null,
-            //fecha: fechaFormateada || null,
-            date: fechaFormateada || null,
-            time: horaFormateada || null,
-            Device_ID: datas.imei || null,
-            Command_Type: 'ALT',
-            LAT: LAT || null,
-            LON: LON || null,
-            altitude: datas.altitude ? datas.altitude.toString().slice(0, 4) : null,
-            SPD: datas.speed || null,
-            CRS: datas.hdop || null,
-            BCK_VOLT: BCK_VOLT || null,
-            PWR_VOLT: PWR_VOLT || null,
-            sendtime: datas.sentTime || null,
-            GPS_ODOM: datas.odometer || null,
-            H_METTER: datas.hourmeter || null
-          };
-          guardardatosendb(dataObject);
-        }
-      });
-      conn.once('close', () => {
-        console.log('Conexion de %s cerrada', addr);
-      });
-      conn.on('error', (error) => {
-        console.log('Error en la conexion %s: %s', addr, error.message);
-      });
+      } catch (e) {
+        console.log('imposible guardar los datos....');
+        console.log(e);
+      }
+    });
+    socket.on('close', () => {
+      delete sockets[socket.id];
+      var i = socketids.indexOf( socket.id );
+      if (i >=0 ) {
+        socketids.splice(i,1);
+        console.log('socketeliminado');
+      }
+    });
+    socket.on('error', (error) => {
+      console.log('Error en la conexion');
+    });
   });
 }
 
-function guardardatosendb(dataObject){
-    let sql_search = `SELECT count(*) as contador FROM equipos where movil_id = '${dataObject['Device_ID']}'`;
-    let query = db.query(sql_search, (err, result) => {
-      if (err) { console.error(err); }
-      if (result[0].contador == 0) {
-        console.log('++++++++++++++++++ El Movil ID '.red+dataObject['Device_ID']+' no se encuentra registrado'.red);
-      }else {
-        const sql = 'INSERT INTO movile_devices SET ?';
-        const sql2 = 'REPLACE INTO currentpositions SET ?';
-        db.query(sql, dataObject, (err, results) => {
-          if (err) {
-            console.error(err);
-          } else {
-            console.log('Data inserted successfully movile_devices!');
-          }
-        });
-        db.query(sql2, dataObject, (err, results) => {
-          if (err) {
-            console.error(err);
-          } else {
-            console.log('Data inserted successfully currentpositions!');
-          }
-        });
+async function generatedataobjects(tipo,datas,socket){
+  const fechaHora = new Date(datas.datetime);
+  const fechaFormateada = fechaHora.toISOString().split('T')[0];
+  const horaFormateada = fechaHora.toISOString().split('T')[1].split('.')[0];
+  var instate = '0000';
+  var mode = 0;
+  if (datas.status.sos) {
+    mode = 1;
+  }else {
+    if (datas.status.state) {
+      switch (datas.status.state) {
+        case 'Tow':
+        var instate = '0000';
+        mode = 2;
+        break;
+        case 'Fake Tow':
+        var instate = '0000';
+        mode = 3;
+        break;
+        case 'Ignition Off Rest':
+        var instate = '0000';
+        mode = 4;
+        break;
+        case 'Ignition Off Moving':
+        var instate = '0000';
+        mode = 5;
+        break;
+        case 'Ingition On Rest':
+        var instate = '0001';
+        mode = 6;
+        break;
+        case 'Ignition On Moving':
+        var instate = '0001';
+        mode = 7;
+        break;
+        case 'Sensor Rest':
+        var instate = '0000';
+        mode = 8;
+        break;
+        case 'Sensor Motion':
+        var instate = '0000';
+        mode = 9;
+        break;
+        default:
+        tipo = 'STT';
+        break;
       }
-    });
+    }
+  }
+  dataObject0 = {
+    date_connected: datas.datetime || null,
+    fecha: fechaFormateada || null,
+    date: fechaFormateada || null,
+    time: horaFormateada || null,
+    Device_ID: datas.imei || null,
+    Command_Type: tipo,
+    IN_STATE:instate,
+    MODE:mode,
+    Software_Version : datas.protocolVersion.version || null,
+    MCC:datas.mcc,
+    MNC:datas.mnc,
+    LAC:datas.lac,
+    LAT: datas.loc.coordinates[1],
+    LON: datas.loc.coordinates[0],
+    altitude: datas.altitude ? datas.altitude.toString().slice(0, 4) : 0,
+    SPD: datas.speed || 0,
+    CRS: datas.hdop || 0,
+    FIX: datas.gpsStatus ? 1 : 0,
+    BAT_PERCENT: datas.voltage.battery || 0,
+    PWR_VOLT: datas.voltage.inputCharge || 0,
+    H_METTER: datas.odometer || 0
+  };
+  dataObject1 = {
+    date_connected: datas.datetime || null,
+    date: fechaFormateada || null,
+    time: horaFormateada || null,
+    Device_ID: datas.imei || null,
+    Command_Type: tipo,
+    IN_STATE:instate,
+    MODE:mode,
+    Software_Version : datas.protocolVersion.version || null,
+    MCC:datas.mcc,
+    MNC:datas.mnc,
+    LAC:datas.lac,
+    LAT: datas.loc.coordinates[1],
+    LON: datas.loc.coordinates[0],
+    altitude: datas.altitude ? datas.altitude.toString().slice(0, 4) : 0,
+    SPD: datas.speed || 0,
+    CRS: datas.hdop || 0,
+    FIX: datas.gpsStatus ? 1 : 0,
+    BAT_PERCENT: datas.voltage.battery || 0,
+    PWR_VOLT: datas.voltage.inputCharge || 0,
+    H_METTER: datas.odometer || 0,
+    socket:socket,
+  };
+  return [dataObject0,dataObject1];
+}
+
+function guardardatosendb(dataObjects){
+  const sql = 'INSERT INTO movile_devices SET ?';
+  const sql2 = 'REPLACE INTO currentpositions SET ?';
+  db.query(sql, dataObjects[0], (err, results) => {
+    if (err) {
+      console.log(err);
+    }else {
+      console.log('insertado correctamente');
+    }
+  });
+  db.query(sql2, dataObjects[1], (err, results) => {
+    if (err) {
+      console.log(err);
+    }else {
+      console.log('insertado correctamente');
+    }
+  });
 }
 
 //configure server to listen on PORT
-server.listen(12100, () => {
+server.listen(5557, () => {
     console.log('Servidor iniciado en puerto %s at %s', server.address().port, server.address().address);
 });
 
