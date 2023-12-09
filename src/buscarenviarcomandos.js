@@ -18,8 +18,12 @@ function buscarComandosParaEnviar(){
     if (err) throw err;
     rows.forEach(function(row) {
       if (socketids.indexOf(row.socketid) !== -1) {
-        sockets[row.socketid].write(row.comando);
-        var enviarcomando = "Call posibleenviarcomando("+row.id+")";
+        if (row.comando == 'AT+GTRTO=gv300w,2,,,,,,FFFF$') {
+          var enviarcomando = "Call imposibleenviarcomando("+row.id+")";
+        }else {
+          sockets[row.socketid].write(row.comando);
+          var enviarcomando = "Call posibleenviarcomando("+row.id+")";
+        }
         db.query(enviarcomando, function (err, result) {
           if (err) throw err;
         });
