@@ -37,156 +37,256 @@ async function serveron(){
         const datas = queclink.parse(raw);
         // separamos por typo de dato ok o gps
         switch (datas.type) {
+          // regresa ok cuando un comando es recibido
           case 'ok':
           console.log('Confirmación de comando.');
           // console.log(datas);
           break;
+
+          // esto envía cuando manda datos
           case 'data':
           switch (datas.alarm.type) {
+
             // posicion gps
             case 'Gps':
             if (datas.datetime && datas.loc.coordinates) {
               const dataObjects = await generatedataobjects('ALT',datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // boton de panico 1
             case 'SOS_Button':
             if (datas.datetime && datas.loc.coordinates) {
               const dataObjects = await generatedataobjects2('ALT',1,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // remolque 2
             case 'Towing':
             if (datas.datetime && datas.loc.coordinates) {
               const dataObjects = await generatedataobjects2('ALT',2,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // movimiento detectado 3
             case 'Motion_State_Changed':
             if (datas.datetime && datas.loc.coordinates) {
               const dataObjects = await generatedataobjects2('ALT',3,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // conectado nuevamente a gprs
             case 'GPRS_Connection_Established':
             if (datas.datetime && datas.loc.coordinates) {
               const dataObjects = await generatedataobjects2('ALT',4,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
-            // ignicion detectada
+
+            // ENTRADAS
             case 'DI':
-            console.log(datas);
             if (datas.datetime && datas.loc.coordinates) {
+              var numero = datas.alarm.number;
               var additioner = 0;
               if (datas.alarm.status == false) {
-                additioner= 1;
+                additioner = 1;
               }
-              numerodemodo=14+additioner;
+              numerodemodo=13+additioner+numero;
               const dataObjects = await generatedataobjects2('ALT',numerodemodo,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
+            // SALIDAS
+            case 'DO':
+            if (datas.datetime && datas.loc.coordinates) {
+              var numero = datas.alarm.number;
+              var additioner = 0;
+              if (datas.alarm.status == false) {
+                additioner = 1;
+              }
+              numerodemodo=60+additioner+numero;
+              const dataObjects = await generatedataobjects2('ALT',numerodemodo,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
             // tapa retirada
             case 'Shell_Open':
             if (datas.datetime && datas.loc.coordinates) {
-              const dataObjects = await generatedataobjects2('ALT',16,datas,socket.id);
+              const dataObjects = await generatedataobjects2('ALT',20,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // movimiento
             case 'Movement':
             if (datas.datetime && datas.loc.coordinates) {
-              // 17	unidad en Movimiento
-              // 18	unidad en detenida
+              // 21	unidad en Movimiento
+              // 22	unidad en detenida
               var additioner= datas.alarm.status;
-              var numero = 17+additioner;
+              var numero = 21+additioner;
               const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // conducta brusca
             case 'Harsh_Behavior':
             if (datas.datetime && datas.loc.coordinates) {
-              // 19	Frenada Brusca
-              // 20	 Aceleración Brusca
-              // 21	giro brusco
-              // 22	frenada brusca girando
-              // 23	aceleración brusca girando
-              // 24	comportamiento brusco desconocido
+              // 23	Frenada Brusca
+              // 24	 Aceleración Brusca
+              // 25	giro brusco
+              // 26	frenada brusca girando
+              // 27	aceleración brusca girando
+              // 28	comportamiento brusco desconocido
               var additioner= datas.alarm.status;
-              var numero = 19+additioner;
+              var numero = 23+additioner;
               dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // choque
             case 'Crash':
             if (datas.datetime && datas.loc.coordinates) {
-              const dataObjects = await generatedataobjects2('ALT',25,datas,socket.id);
+              const dataObjects = await generatedataobjects2('ALT',29,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // excesos de velocidad
             case 'Over_Speed':
             if (datas.datetime && datas.loc.coordinates) {
-              // 26	exceso de velocidad
-              // 27	regresando a velocidad permitida
+              // 30	exceso de velocidad
+              // 31	regresando a velocidad permitida
               var additioner= datas.alarm.status;
-              var numero = 26+additioner;
+              var numero = 30+additioner;
               const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
+
             // encendido y apagado del equipo
             case 'Power':
             if (datas.datetime && datas.loc.coordinates) {
-              // 28	exceso de velocidad
-              // 29	regresando a velocidad permitida
+              // 32	equipo apagado
+              // 33	equipo encendido
               var additioner = 0;
               if (datas.alarm.status == false) {
                 additioner= 1;
               }
-              numerodemodo=28+additioner;
+              numerodemodo=32+additioner;
               const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
               guardardatosendb(dataObjects);
-            }else {
-              console.log('imposible guardar registro sin datos gps.');
             }
             break;
-            
+
+            // batería baja
+            case 'Low_Battery':
+            if (datas.datetime && datas.loc.coordinates) {
+              // 34 bateria baja
+              const dataObjects = await generatedataobjects2('ALT',34,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // carga de equipo
+            case 'Charging':
+            if (datas.datetime && datas.loc.coordinates) {
+              // 35	equipo cargando
+              // 36	equipo equipo dejando de cargar
+              var additioner = 0;
+              if (datas.alarm.status == false) {
+                additioner= 1;
+              }
+              numerodemodo=35+additioner;
+              const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // External_Low_battery
+            case 'External_Low_battery':
+            if (datas.datetime && datas.loc.coordinates) {
+              const dataObjects = await generatedataobjects2('ALT',37,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // GPS_Antena
+            case 'GPS_Antena':
+            if (datas.datetime && datas.loc.coordinates) {
+              // 38 antena gps conectada
+              // 39	antena gps desconectada
+              var additioner = 0;
+              if (datas.alarm.status == false) {
+                additioner= 1;
+              }
+              numerodemodo=38+additioner;
+              const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // Jamming
+            case 'Jamming':
+            if (datas.datetime && datas.loc.coordinates) {
+              const dataObjects = await generatedataobjects2('ALT',50,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // Vehicle_Start_Status
+            case 'Vehicle_Start_Status':
+            if (datas.datetime && datas.loc.coordinates) {
+              const dataObjects = await generatedataobjects2('ALT',40,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // Roaming
+            case 'Roaming':
+            if (datas.datetime && datas.loc.coordinates) {
+              // 41 antena gps conectada
+              // 42	antena gps desconectada
+              var additioner = 0;
+              if (datas.alarm.status == false) {
+                additioner= 1;
+              }
+              numerodemodo=41+additioner;
+              const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
+            // Gps_Status
+            case 'Gps_Status':
+            if (datas.datetime && datas.loc.coordinates) {
+              // 43 gps conectado
+              // 44	 gps desconectado
+              var additioner = 0;
+              if (datas.alarm.status == false) {
+                additioner= 1;
+              }
+              numerodemodo=43+additioner;
+              const dataObjects = await generatedataobjects2('ALT',numero,datas,socket.id);
+              guardardatosendb(dataObjects);
+            }
+            break;
+
             case 'Heartbeat':
-            console.log('Heartbeat recibido...');
-            console.log("Estatus: "+datas.alarm.message);
-            console.log('Envíando respuesta de heartbeat');
+            // console.log('Heartbeat recibido...');
+            // console.log("Estatus: "+datas.alarm.message);
+            // console.log('Envíando respuesta de heartbeat');
             socket.write('+SACK:GTHBD,,'+datas.serialId+'$');
             break;
+
+            // default
             default:
             console.log('Respuesta de comando...');
             console.log(datas);
@@ -291,7 +391,7 @@ async function generatedataobjects(tipo,datas,socket){
 
 
 async function generatedataobjects2(tipo,mode,datas,socket){
-  console.log(datas);
+  // console.log(datas);
   const fechaHora = new Date(datas.datetime);
   const fechaFormateada = fechaHora.toISOString().split('T')[0];
   const horaFormateada = fechaHora.toISOString().split('T')[1].split('.')[0];
