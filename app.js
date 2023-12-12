@@ -288,36 +288,36 @@ async function serveron(){
 
             // default
             default:
-            console.log('Respuesta de comando...');
-            console.log(datas);
+            // console.log('Respuesta de comando...');
+            // console.log(datas);
             guardarrespuestacomando(datas.imei,datas.raw);
           }
           break;
           default:
-          console.log('Sin tipo definido...');
-          console.log(datas);
+          // console.log('Sin tipo definido...');
+          // console.log(datas);
         }
       } catch (e) {
-        console.log('imposible guardar los datos....');
-        console.log(e);
+        // console.log('imposible guardar los datos....');
+        // console.log(e);
       }
     });
     socket.on('close', () => {
-      console.log('socket cerrado.');
+      // console.log('socket cerrado.');
       delete sockets[socket.id];
       var i = socketids.indexOf( socket.id );
       if (i >=0 ) {
         socketids.splice(i,1);
-        console.log('socketeliminado');
+        // console.log('socketeliminado');
       }
     });
     socket.on('error', (error) => {
-      console.log('error en socket.');
+      // console.log('error en socket.');
       delete sockets[socket.id];
       var i = socketids.indexOf( socket.id );
       if (i >=0 ) {
         socketids.splice(i,1);
-        console.log('socketeliminado');
+        // console.log('socketeliminado');
       }
     });
   });
@@ -455,14 +455,14 @@ function guardardatosendb(dataObjects){
     if (err) {
       console.log(err);
     }else {
-      console.log('insertado correctamente');
+      // console.log('insertado correctamente');
     }
   });
   db.query(sql2, dataObjects[1], (err, results) => {
     if (err) {
       console.log(err);
     }else {
-      console.log('insertado correctamente');
+      // console.log('insertado correctamente');
     }
   });
 }
