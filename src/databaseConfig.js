@@ -6,10 +6,10 @@ config = {
   password: "",
   database: "plataforma",
   //production
-  //host: "162.214.125.48",
-  //user: "wwkosm_development",
-  //password: "-g8!W5FO=&V;",
-  //database: "wwkosm_plataforma",
+  // host: "162.215.214.33",
+  // user: "wwdrac_node_server",
+  // password: "r.j),#jyhtX=",
+  // database: "wwdrac_draco",
   port: '3306',
 }
 
